@@ -1,3 +1,20 @@
 {
-
+  "enabled": {
+    "description": "是否启用定时暂停功能",
+    "type": "bool",
+    "hint": "启用后将在指定时间段内暂停LLM服务",
+    "default": false
+  },
+  "start_time": {
+    "description": "暂停开始时间",
+    "type": "string",
+    "hint": "每天开始暂停LLM服务的时间，格式为 HH:MM，例如：14:10",
+    "default": "14:10"
+  },
+  "end_time": {
+    "description": "暂停结束时间",
+    "type": "string", 
+    "hint": "每天结束暂停LLM服务的时间，格式为 HH:MM，例如：18:00",
+    "default": "18:00"
+  }
 }
