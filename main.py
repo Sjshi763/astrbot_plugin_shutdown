@@ -18,7 +18,7 @@ class ShutdownPlugin(Star):
         self.shutdown_end_time = None
         
         # 配置文件路径
-        self.config_file = os.path.join(get_astrbot_data_path(), "astrbot_shutdown_config.json")
+        self.config_file = os.path.join(get_astrbot_data_path(), "config", "astrbot_plugin_shutdown_config.json")
         
         # 加载配置
         self.load_config()
@@ -98,17 +98,23 @@ class ShutdownPlugin(Star):
     def is_shutdown_time(self):
         """检查当前是否在暂停时间内"""
         if not self.shutdown_enabled or not self.shutdown_start_time or not self.shutdown_end_time:
+            logger.info(f"Shutdown check: enabled={self.shutdown_enabled}, start={self.shutdown_start_time}, end={self.shutdown_end_time}")
             return False
             
         now = datetime.now().time()
         start_time = datetime.strptime(self.shutdown_start_time, "%H:%M").time()
         end_time = datetime.strptime(self.shutdown_end_time, "%H:%M").time()
         
+        logger.info(f"Time check: now={now}, start={start_time}, end={end_time}")
+        
         # 处理跨天情况
         if start_time <= end_time:
-            return start_time <= now <= end_time
+            result = start_time <= now <= end_time
         else:
-            return now >= start_time or now <= end_time
+            result = now >= start_time or now <= end_time
+            
+        logger.info(f"Shutdown time result: {result}")
+        return result
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("StopServeStart")
