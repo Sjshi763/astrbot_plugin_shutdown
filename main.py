@@ -190,10 +190,10 @@ class ShutdownPlugin(Star):
         """LLM请求钩子，在暂停时间内拒绝服务"""
         if self.is_shutdown_time():
             logger.info("LLM service is currently shutdown, rejecting request")
-            # 设置一个空的响应，阻止LLM请求
-            req.prompt = ""
             # 发送拒绝消息
             await event.send(event.plain_result("当前时间在暂停服务时间内，LLM服务暂时不可用。"))
+            # 终止消息传递，阻止LLM请求继续处理
+            event.stop_event()
 
     async def terminate(self):
         """插件终止时清理资源"""
