@@ -188,6 +188,9 @@ class ShutdownPlugin(Star):
     @filter.on_llm_request()
     async def on_llm_request(self, event: AstrMessageEvent, req):
         """LLM请求钩子，在暂停时间内拒绝服务"""
+        # 每次请求时重新加载配置，确保配置变更能够及时生效
+        self.load_config()
+        
         if self.is_shutdown_time():
             logger.info("LLM service is currently shutdown, rejecting request")
             # 先终止消息传递，阻止LLM请求继续处理
