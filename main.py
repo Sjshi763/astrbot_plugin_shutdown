@@ -10,19 +10,12 @@ from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
 @register("astrbot_plugin_shutdown", "Sjshi763", "用命令定时暂停 AstrBot服务LLM，以解决某些大英雄要看腿", "1.0.0", "https://github.com/Zhalslar/astrbot_plugin_shutdown")
 class ShutdownPlugin(Star):
-    def __init__(self, context: Context) -> None:
+    def __init__(self, context: Context, config: dict) -> None:
         super().__init__(context)
         self.scheduler = AsyncIOScheduler()
-        self.shutdown_enabled = False
-        self.shutdown_start_time = None
-        self.shutdown_end_time = None
-        
-        # 配置文件路径
-        self.config_file = os.path.join(get_astrbot_data_path(), "config", "astrbot_plugin_shutdown_config.json")
-        logger.info(f"Shutdown plugin config file path: {self.config_file}")
-        
-        # 加载配置
-        self.load_config()
+        self.shutdown_enabled = config.get('enabled', False)
+        self.shutdown_start_time = config.get('start_time')
+        self.shutdown_end_time = config.get('end_time')
         
         # 初始化定时任务
         self.init_scheduler()
@@ -30,42 +23,8 @@ class ShutdownPlugin(Star):
         # 启动调度器
         self.scheduler.start()
         
-        logger.info("Shutdown plugin initialized.")
+        logger.info(f"Shutdown plugin initialized with config: enabled={self.shutdown_enabled}, start_time={self.shutdown_start_time}, end_time={self.shutdown_end_time}")
 
-    def load_config(self):
-        """加载配置文件"""
-        try:
-            logger.info(f"Loading config from: {self.config_file}")
-            logger.info(f"Config file exists: {os.path.exists(self.config_file)}")
-            
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                    self.shutdown_enabled = config.get('enabled', False)
-                    self.shutdown_start_time = config.get('start_time')
-                    self.shutdown_end_time = config.get('end_time')
-                    logger.info(f"Loaded shutdown config: enabled={self.shutdown_enabled}, start_time={self.shutdown_start_time}, end_time={self.shutdown_end_time}")
-                    logger.info(f"Full config content: {config}")
-            else:
-                logger.warning(f"Config file not found, creating new one at: {self.config_file}")
-                self.save_config()
-        except Exception as e:
-            logger.error(f"Failed to load config: {e}")
-            logger.error(f"Config file path: {self.config_file}")
-
-    def save_config(self):
-        """保存配置文件"""
-        try:
-            config = {
-                'enabled': self.shutdown_enabled,
-                'start_time': self.shutdown_start_time,
-                'end_time': self.shutdown_end_time
-            }
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=2)
-            logger.info("Saved shutdown config")
-        except Exception as e:
-            logger.error(f"Failed to save config: {e}")
 
     def init_scheduler(self):
         """初始化定时任务"""
@@ -94,13 +53,11 @@ class ShutdownPlugin(Star):
         """开始暂停服务"""
         logger.info("Starting LLM service shutdown")
         self.shutdown_enabled = True
-        self.save_config()
 
     async def end_shutdown(self):
         """结束暂停服务"""
         logger.info("Ending LLM service shutdown")
         self.shutdown_enabled = False
-        self.save_config()
 
     def is_shutdown_time(self):
         """检查当前是否在暂停时间内"""
@@ -139,7 +96,6 @@ class ShutdownPlugin(Star):
             self.scheduler.remove_all_jobs()
             self.init_scheduler()
             
-            self.save_config()
             yield event.plain_result(f"已设置暂停开始时间: {start_time}")
         except ValueError:
             yield event.plain_result("时间格式错误，请使用 HH:MM 格式，例如：14:10")
@@ -160,7 +116,6 @@ class ShutdownPlugin(Star):
             self.scheduler.remove_all_jobs()
             self.init_scheduler()
             
-            self.save_config()
             yield event.plain_result(f"已设置暂停结束时间: {end_time}")
         except ValueError:
             yield event.plain_result("时间格式错误，请使用 HH:MM 格式，例如：14:10")
@@ -169,8 +124,7 @@ class ShutdownPlugin(Star):
     @filter.command("StopServeStatus")
     async def StopServeStatus(self, event: AstrMessageEvent):
         '''查看当前暂停服务状态'''
-        # 重新加载配置以确保状态最新
-        self.load_config()
+        # 状态已通过配置更新，无需重新加载
         
         status = "已启用" if self.shutdown_enabled else "已禁用"
         current_time = datetime.now().strftime("%H:%M")
@@ -198,14 +152,12 @@ class ShutdownPlugin(Star):
         '''禁用暂停服务功能'''
         self.shutdown_enabled = False
         self.scheduler.remove_all_jobs()
-        self.save_config()
         yield event.plain_result("已禁用暂停服务功能")
 
     @filter.on_llm_request()
     async def on_llm_request(self, event: AstrMessageEvent, req):
         """LLM请求钩子，在暂停时间内拒绝服务"""
-        # 每次请求时重新加载配置，确保配置变更能够及时生效
-        self.load_config()
+        # 配置已通过 AstrBot 标准机制管理，无需手动重新加载
         
         if self.is_shutdown_time():
             logger.info("LLM service is currently shutdown, rejecting request")
