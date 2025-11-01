@@ -60,25 +60,9 @@ class ShutdownPlugin(Star):
         self.shutdown_enabled = False
 
     def is_shutdown_time(self):
-        """检查当前是否在暂停时间内"""
-        if not self.shutdown_enabled or not self.shutdown_start_time or not self.shutdown_end_time:
-            logger.info(f"Shutdown check: enabled={self.shutdown_enabled}, start={self.shutdown_start_time}, end={self.shutdown_end_time}")
-            return False
-            
-        now = datetime.now().time()
-        start_time = datetime.strptime(self.shutdown_start_time, "%H:%M").time()
-        end_time = datetime.strptime(self.shutdown_end_time, "%H:%M").time()
-        
-        logger.info(f"Time check: now={now}, start={start_time}, end={end_time}")
-        
-        # 处理跨天情况
-        if start_time <= end_time:
-            result = start_time <= now <= end_time
-        else:
-            result = now >= start_time or now <= end_time
-            
-        logger.info(f"Shutdown time result: {result}")
-        return result
+        """检查当前是否在暂停时间内（仅检查状态标志）"""
+        logger.info(f"Shutdown check: enabled={self.shutdown_enabled}")
+        return self.shutdown_enabled
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("StopServeStart")
@@ -90,11 +74,13 @@ class ShutdownPlugin(Star):
             # 验证时间格式
             datetime.strptime(start_time, "%H:%M")
             self.shutdown_start_time = start_time
-            self.shutdown_enabled = True
             
             # 重新调度任务
             self.scheduler.remove_all_jobs()
             self.init_scheduler()
+            
+            # 启用暂停功能
+            self.shutdown_enabled = True
             
             yield event.plain_result(f"已设置暂停开始时间: {start_time}")
         except ValueError:
@@ -110,13 +96,12 @@ class ShutdownPlugin(Star):
             # 验证时间格式
             datetime.strptime(end_time, "%H:%M")
             self.shutdown_end_time = end_time
-            self.shutdown_enabled = True
             
             # 重新调度任务
             self.scheduler.remove_all_jobs()
             self.init_scheduler()
             
-            yield event.plain_result(f"已设置暂停结束时间: {end_time}")
+            yield event.plain_result(f"已设置暂停结束时间: {end_time}\n注意：暂停功能需要单独启用")
         except ValueError:
             yield event.plain_result("时间格式错误，请使用 HH:MM 格式，例如：14:10")
 
