@@ -19,6 +19,7 @@ class ShutdownPlugin(Star):
         
         # 配置文件路径
         self.config_file = os.path.join(get_astrbot_data_path(), "config", "astrbot_plugin_shutdown_config.json")
+        logger.info(f"Shutdown plugin config file path: {self.config_file}")
         
         # 加载配置
         self.load_config()
@@ -34,6 +35,9 @@ class ShutdownPlugin(Star):
     def load_config(self):
         """加载配置文件"""
         try:
+            logger.info(f"Loading config from: {self.config_file}")
+            logger.info(f"Config file exists: {os.path.exists(self.config_file)}")
+            
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
@@ -41,10 +45,13 @@ class ShutdownPlugin(Star):
                     self.shutdown_start_time = config.get('start_time')
                     self.shutdown_end_time = config.get('end_time')
                     logger.info(f"Loaded shutdown config: enabled={self.shutdown_enabled}, start_time={self.shutdown_start_time}, end_time={self.shutdown_end_time}")
+                    logger.info(f"Full config content: {config}")
             else:
+                logger.warning(f"Config file not found, creating new one at: {self.config_file}")
                 self.save_config()
         except Exception as e:
             logger.error(f"Failed to load config: {e}")
+            logger.error(f"Config file path: {self.config_file}")
 
     def save_config(self):
         """保存配置文件"""
@@ -162,6 +169,9 @@ class ShutdownPlugin(Star):
     @filter.command("StopServeStatus")
     async def StopServeStatus(self, event: AstrMessageEvent):
         '''查看当前暂停服务状态'''
+        # 重新加载配置以确保状态最新
+        self.load_config()
+        
         status = "已启用" if self.shutdown_enabled else "已禁用"
         current_time = datetime.now().strftime("%H:%M")
         is_shutdown = "是" if self.is_shutdown_time() else "否"
